@@ -1,0 +1,19 @@
+{
+  "name": "blogappbackend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Dhinesh-M-7/BlogApplicationBackend.git"
+  },
+  "author": "Dhinesh Murugesan",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Dhinesh-M-7/BlogApplicationBackend/issues"
+  },
+  "homepage": "https://github.com/Dhinesh-M-7/BlogApplicationBackend#readme"
+}
