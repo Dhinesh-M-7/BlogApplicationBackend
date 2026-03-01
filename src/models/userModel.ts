@@ -24,12 +24,12 @@ export interface UserDetail {
 export const createUser = async (userData: User) => {
     const { name, email, password } = userData;
     const result = await pool.query(`INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING name, email, isvalidated`, [name, email, password]);
-    return result.rows[0] || {};
+    return result.rows[0];
 };
 
 export const verifyUser = async (email: string) => {
     const result = await pool.query(`UPDATE users SET isvalidated = TRUE WHERE email = $1 RETURNING name, email`, [email]);
-    return result.rows[0] || {};
+    return result.rows[0];
 };
 
 export const createRefreshToken = async (userId: number) => {
@@ -40,17 +40,17 @@ export const createRefreshToken = async (userId: number) => {
         `INSERT INTO refreshtokens (token, userid, expire) VALUES ($1, $2, $3) RETURNING token`,
         [newRefreshToken, userId, newExpiry]
     );
-    return result.rows[0] || {};
+    return result.rows[0];
 }
 
 export const getUserUsingEmail = async (email: string) => {
     const result = await pool.query(`SELECT id, name, email, password, isvalidated FROM users WHERE email = $1`, [email]);
-    return result.rows[0] || {} as UserDetail;
+    return result.rows[0] as UserDetail;
 }
 
 export const getUserUsingId = async (userId: number) => {
     const result = await pool.query(`SELECT id, name, email, password, isvalidated FROM users WHERE id = $1`, [userId]);
-    return result.rows[0] || {} as UserDetail;
+    return result.rows[0] as UserDetail;
 }
 
 export const updateUserIdToSession = async (id: number, sessionId: string) => {

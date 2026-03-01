@@ -33,8 +33,8 @@ export const loginUser = async (req: Request, res: Response) => {
     req.session.save(async (err) => {
         if (err) return res.status(500).json({ message: "Session initialization failed" });
         await updateUserIdToSession(response.sessionData.id, req.sessionID);
+        res.status(200).json({ message: response.message });
     })
-    res.status(200).json({ message: response.message });
 }
 
 export const logoutUser = async (req: Request, res: Response) => {

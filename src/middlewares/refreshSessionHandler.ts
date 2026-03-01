@@ -9,8 +9,8 @@ interface StoredToken {
 }
 
 export const refreshSessionHandler = async (req: Request, res: Response, next: NextFunction) => {
-    const publicRoutes = ["/api/users/login", "/api/users/forgotpassword", "/api/users/resetpassword"];
-    if (publicRoutes.includes(req.path)) return next();
+    const publicRoutes = ["/api/users/login", "/api/users/forgotpassword", "/api/users/resetpassword", "/api/users/signup"];
+    if (publicRoutes.includes(req.path) || req.path.startsWith("/api/users/verifyemail")) return next();
     if (req.session && (req.session as any).user) return next();
 
     const { rToken } = req.cookies;
