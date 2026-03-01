@@ -1,19 +1,49 @@
 {
-  "name": "blogappbackend",
-  "version": "1.0.0",
-  "description": "",
-  "main": "app.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/Dhinesh-M-7/BlogApplicationBackend.git"
-  },
-  "author": "Dhinesh Murugesan",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/Dhinesh-M-7/BlogApplicationBackend/issues"
-  },
-  "homepage": "https://github.com/Dhinesh-M-7/BlogApplicationBackend#readme"
+	"name": "blogappbackend",
+	"version": "1.0.0",
+	"description": "",
+	"type": "module",
+	"main": "dist/app.js",
+	"scripts": {
+		"dev": "tsc --noEmit && nodemon --watch src --ext ts --exec \"node --loader ts-node/esm src/app.ts\"",
+		"build": "tsc",
+		"start": "node dist/app.js"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/Dhinesh-M-7/BlogApplicationBackend.git"
+	},
+	"author": "Dhinesh Murugesan",
+	"license": "ISC",
+	"bugs": {
+		"url": "https://github.com/Dhinesh-M-7/BlogApplicationBackend/issues"
+	},
+	"homepage": "https://github.com/Dhinesh-M-7/BlogApplicationBackend#readme",
+	"dependencies": {
+		"bcrypt": "^6.0.0",
+		"connect-pg-simple": "^10.0.0",
+		"cookie-parser": "^1.4.7",
+		"cors": "^2.8.6",
+		"dotenv": "^17.3.1",
+		"express": "^5.2.1",
+		"express-session": "^1.19.0",
+		"jsonwebtoken": "^9.0.3",
+		"nodemailer": "^8.0.1",
+		"pg": "^8.18.0",
+		"resend": "^6.9.2"
+	},
+	"devDependencies": {
+		"@types/bcrypt": "^6.0.0",
+		"@types/connect-pg-simple": "^7.0.3",
+		"@types/cookie-parser": "^1.4.10",
+		"@types/cors": "^2.8.19",
+		"@types/express": "^5.0.6",
+		"@types/express-session": "^1.18.2",
+		"@types/jsonwebtoken": "^9.0.10",
+		"@types/node": "^25.2.3",
+		"@types/nodemailer": "^7.0.10",
+		"@types/pg": "^8.16.0",
+		"nodemon": "^3.1.11",
+		"ts-node": "^10.9.2"
+	}
 }
