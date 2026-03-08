@@ -28,7 +28,8 @@ export const loginUser = async (req: Request, res: Response) => {
     res.cookie('rToken', response.refreshToken.token, {
         httpOnly: true,
         maxAge: 7 * 24 * 60 * 60 * 1000,
-        sameSite: 'none'
+        sameSite: 'none',
+        secure: true
     });
 
     req.session.save(async (err) => {
