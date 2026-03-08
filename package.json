@@ -20,6 +20,7 @@
 	},
 	"homepage": "https://github.com/Dhinesh-M-7/BlogApplicationBackend#readme",
 	"dependencies": {
+		"@getbrevo/brevo": "^4.0.1",
 		"bcrypt": "^6.0.0",
 		"cloudinary": "^2.9.0",
 		"connect-pg-simple": "^10.0.0",
