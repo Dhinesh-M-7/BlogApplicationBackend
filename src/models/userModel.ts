@@ -19,6 +19,14 @@ export interface UserDetail {
     email: string;
     password: string;
     isvalidated: boolean;
+    bio: string;
+    profileurl: string;
+}
+
+interface UpdateUserData {
+    name: string;
+    bio: string;
+    profileurl: string;
 }
 
 export const createUser = async (userData: User) => {
@@ -44,13 +52,19 @@ export const createRefreshToken = async (userId: number) => {
 }
 
 export const getUserUsingEmail = async (email: string) => {
-    const result = await pool.query(`SELECT id, name, email, password, isvalidated FROM users WHERE email = $1`, [email]);
+    const result = await pool.query(`SELECT id, name, email, password, isvalidated, bio, profileurl FROM users WHERE email = $1`, [email]);
     return result.rows[0] as UserDetail;
 }
 
 export const getUserUsingId = async (userId: number) => {
-    const result = await pool.query(`SELECT id, name, email, password, isvalidated FROM users WHERE id = $1`, [userId]);
+    const result = await pool.query(`SELECT id, name, email, password, isvalidated, bio, profileurl FROM users WHERE id = $1`, [userId]);
     return result.rows[0] as UserDetail;
+}
+
+export const updateUser = async (userId: number, updateUserData: UpdateUserData) => {
+    const result = await pool.query(`UPDATE users SET name = $1, bio = $2, profileurl = $3 WHERE id = $4 RETURNING name, bio, profileurl, email`,
+        [updateUserData.name, updateUserData.bio, updateUserData.profileurl, userId]);
+    return result.rows[0];
 }
 
 export const updateUserIdToSession = async (id: number, sessionId: string) => {

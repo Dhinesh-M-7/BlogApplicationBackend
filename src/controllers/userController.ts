@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import * as userService from "../services/userService.js";
-import { clearRefreshToken, deleteOtherSessions, updateUserIdToSession } from "../models/userModel.js";
+import { clearRefreshToken, deleteAllSessions, deleteOtherSessions, updateUserIdToSession } from "../models/userModel.js";
 
 export const signupUser = async (req: Request, res: Response) => {
     const userData = req.body;
@@ -77,17 +77,34 @@ export const forgotPassword = async (req: Request, res: Response) => {
     const origin = req.get('origin') || new URL(referer).origin;
 
     const response = await userService.forgotPassword(userData, origin);
+
+    res.clearCookie("connect.sid");
+    res.clearCookie("rToken");
+
     res.status(200).json(response);
 }
 
 export const resetPassword = async (req: Request, res: Response) => {
     const userData = req.body;
     const response = await userService.resetPassword(userData);
+
+    res.clearCookie("connect.sid");
+    res.clearCookie("rToken");
+
     res.status(200).json(response);
 }
 
 export const getUser = async (req: Request, res: Response) => {
     const { id } = (req.session as any).user;
     const response = await userService.getUser(id);
+    res.status(200).json(response);
+};
+
+export const updateProfile = async (req: Request, res: Response) => {
+    const userData = req.body;
+    const imageFile = req.file;
+    const { id } = (req.session as any).user;
+
+    const response = await userService.updateUser(id, userData, imageFile);
     res.status(200).json(response);
 };

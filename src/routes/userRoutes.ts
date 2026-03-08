@@ -1,5 +1,13 @@
 import { Router } from "express";
-import { getUser, signupUser, verifyUser, loginUser, logoutUser, changeUserPassword, forgotPassword, resetPassword } from "../controllers/userController.js";
+import { getUser, signupUser, verifyUser, loginUser, logoutUser, changeUserPassword, forgotPassword, resetPassword, updateProfile } from "../controllers/userController.js";
+import multer from 'multer';
+
+const storage = multer.memoryStorage();
+
+const upload = multer({
+    storage: storage,
+    limits: { fileSize: 5 * 1024 * 1024 }
+});
 
 export const userRouter = Router();
 
@@ -11,5 +19,6 @@ userRouter.patch("/changepassword", changeUserPassword);
 userRouter.post("/forgotpassword", forgotPassword);
 userRouter.post("/resetpassword", resetPassword);
 userRouter.get("/detail", getUser);
+userRouter.patch("/profile", upload.single('image'), updateProfile);
 
 export default userRouter;

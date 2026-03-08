@@ -2,6 +2,7 @@ import * as userModel from "../models/userModel.js";
 import { sendForgotPasswordMail, sendVerificationMail } from "./emailService.js";
 import { decodeToken } from "../utils/jwt.js";
 import bcrypt from "bcrypt";
+import { uploadProfileImgToCloudinary, extractPublicIdFromUrl, deleteImageFromCloudinary } from "../config/cloudinary.js";
 
 interface Email {
     email: string;
@@ -27,6 +28,11 @@ interface ChangePasswordData {
 interface ResetPasswordData {
     token: string;
     password: string;
+}
+
+interface UpdateUserData {
+    name?: string;
+    bio?: string;
 }
 
 export const signUp = async (data: SignupData, origin: string) => {
@@ -283,3 +289,35 @@ export const getUser = async (userId: number) => {
         userData,
     };
 };
+
+export const updateUser = async (userId: number, updatedUserData: UpdateUserData, imageFile?: Express.Multer.File | undefined) => {
+    const userData = await userModel.getUserUsingId(userId);
+    if (!userData) {
+        const error = new Error("User not found");
+        (error as any).statusCode = 404;
+        throw error;
+    }
+
+    if (userData.profileurl) {
+        const publicId = extractPublicIdFromUrl(userData.profileurl);
+        await deleteImageFromCloudinary(publicId);
+    }
+
+    let profileUrl: string | undefined;
+    if (imageFile) {
+        profileUrl = await uploadProfileImgToCloudinary(imageFile.buffer);
+    }
+
+    const updatedData = {
+        name: updatedUserData?.name || userData.name,
+        bio: updatedUserData?.bio || userData.bio,
+        profileurl: profileUrl || userData.profileurl
+    }
+
+    const updatedDbData = await userModel.updateUser(userId, updatedData);
+
+    return {
+        message: "User details updated successfully",
+        userData: updatedDbData,
+    };
+}
