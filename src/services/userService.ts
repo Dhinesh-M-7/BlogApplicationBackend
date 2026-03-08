@@ -65,7 +65,7 @@ export const signUp = async (data: SignupData, origin: string) => {
     }
 
     if (user && !user.isvalidated) {
-        sendVerificationMail(data.email, origin);
+        await sendVerificationMail(data.email, origin);
         return {
             message: "User created successfully",
             user
@@ -79,7 +79,7 @@ export const signUp = async (data: SignupData, origin: string) => {
             (error as any).statusCode = 500;
             throw error;
         }
-        sendVerificationMail(data.email, origin);
+        await sendVerificationMail(data.email, origin);
 
         return {
             message: "User created successfully",
@@ -218,7 +218,7 @@ export const forgotPassword = async (data: Email, origin: string) => {
         }
     }
 
-    sendForgotPasswordMail(data.email, origin);
+    await sendForgotPasswordMail(data.email, origin);
 
     return {
         message: "A reset link has been sent to the email address."

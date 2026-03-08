@@ -5,6 +5,7 @@ import { generateToken } from "../utils/jwt.js";
 import nodemailer from "nodemailer";
 
 export const sendVerificationMail = async (to: string, origin: string) => {
+    console.log("DEBUG: Sending email to ", to);
     const token = generateToken(to);
     const verificationUrl = `${origin}/verify-email?token=${token}`;
 
@@ -74,6 +75,7 @@ export const sendVerificationMail = async (to: string, origin: string) => {
 };
 
 export const sendForgotPasswordMail = async (to: string, origin: string) => {
+    console.log("DEBUG: Sending email to ", to);
     const token = generateToken(to);
     const resetUrl = `${origin}/reset-password?token=${token}`;
 
