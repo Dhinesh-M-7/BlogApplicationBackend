@@ -66,7 +66,8 @@ export const refreshSessionHandler = async (req: Request, res: Response, next: N
 
         res.cookie('rToken', newRefreshToken, {
             httpOnly: true,
-            maxAge: 7 * 24 * 60 * 60 * 1000
+            maxAge: 7 * 24 * 60 * 60 * 1000,
+            sameSite: 'none'
         });
 
         req.session.save(async (err) => {
