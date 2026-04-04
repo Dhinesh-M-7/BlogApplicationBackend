@@ -1,5 +1,6 @@
 import { Router, Request, Response } from "express";
 import userRouter from "./userRoutes.js";
+import blogRouter from "./blogRoutes.js";
 
 const rootRouter = Router();
 
@@ -15,5 +16,6 @@ rootRouter.get("/session", (req: Request, res: Response) => {
 });
 
 rootRouter.use("/users", userRouter);
+rootRouter.use("/blogs", blogRouter);
 
 export default rootRouter;

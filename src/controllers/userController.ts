@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import * as userService from "../services/userService.js";
-import { clearRefreshToken, deleteAllSessions, deleteOtherSessions, updateUserIdToSession } from "../models/userModel.js";
+import { clearRefreshToken, deleteOtherSessions, updateUserIdToSession } from "../models/userModel.js";
 
 export const signupUser = async (req: Request, res: Response) => {
     const userData = req.body;

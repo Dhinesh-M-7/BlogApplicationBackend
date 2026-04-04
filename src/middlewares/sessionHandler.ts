@@ -28,9 +28,7 @@ export const sessionHandler = session({
     saveUninitialized: false,
     rolling: true,
     cookie: {
-        httpOnly: true,
         maxAge: 1000 * 60 * 60,
-        sameSite: 'none',
-        secure: true
+        sameSite: 'lax',
     }
 });
