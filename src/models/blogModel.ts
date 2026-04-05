@@ -33,7 +33,7 @@ interface UpdateBlogData {
     title: string;
     slug: string;
     excerpt: string;
-    coverimage: string;
+    coverimage: string | undefined;
     contenthtml: string;
     isprivate: boolean;
     readingtime: number;

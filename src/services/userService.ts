@@ -33,6 +33,7 @@ interface ResetPasswordData {
 interface UpdateUserData {
     name?: string;
     bio?: string;
+    isImageRemoved?: string;
 }
 
 export const signUp = async (data: SignupData, origin: string) => {
@@ -298,7 +299,11 @@ export const updateUser = async (userId: number, updatedUserData: UpdateUserData
         throw error;
     }
 
-    if (userData.profileurl) {
+    const isProfileImgDeleted = (updatedUserData.isImageRemoved !== undefined && updatedUserData.isImageRemoved !== null)
+        ? updatedUserData.isImageRemoved === 'true'
+        : false;
+
+    if (userData.profileurl && (isProfileImgDeleted || imageFile)) {
         const publicId = extractPublicIdFromUrl(userData.profileurl);
         await deleteImageFromCloudinary(publicId);
     }
@@ -311,7 +316,7 @@ export const updateUser = async (userId: number, updatedUserData: UpdateUserData
     const updatedData = {
         name: updatedUserData?.name || userData.name,
         bio: updatedUserData?.bio || userData.bio,
-        profileurl: profileUrl || userData.profileurl
+        profileurl: (isProfileImgDeleted || imageFile) ? profileUrl : userData.profileurl
     }
 
     const updatedDbData = await userModel.updateUser(userId, updatedData);

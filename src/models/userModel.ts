@@ -26,7 +26,7 @@ export interface UserDetail {
 interface UpdateUserData {
     name: string;
     bio: string;
-    profileurl: string;
+    profileurl: string | undefined;
 }
 
 export const createUser = async (userData: User) => {

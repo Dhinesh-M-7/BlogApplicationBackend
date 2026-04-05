@@ -13,6 +13,7 @@ interface UpdateBlogData {
     excerpt?: string;
     contenthtml?: string;
     isprivate?: string;
+    removeImage?: string;
 }
 
 export const processImageUpload = async (userId: number, slugId: string, file?: Express.Multer.File) => {
@@ -117,7 +118,7 @@ export const getBlogData = async (userId: number, blogId: string) => {
 }
 
 export const updateBlogData = async (userId: number, blogData: UpdateBlogData, imageFile?: Express.Multer.File | undefined) => {
-    const { slug, title, excerpt, contenthtml, isprivate } = blogData;
+    const { slug, title, excerpt, contenthtml, isprivate, removeImage } = blogData;
     if (!slug) {
         const error = new Error("Invalid data");
         (error as any).statusCode = 400;
@@ -137,9 +138,13 @@ export const updateBlogData = async (userId: number, blogData: UpdateBlogData, i
         throw error;
     };
 
+    const isCoverImgDeleted = (removeImage !== undefined && removeImage !== null)
+        ? removeImage === 'true'
+        : false;
+
     const newSlug = title && existingBlogData.status !== "published" ? createSlug(title) : existingBlogData.slug;
     const newReadingTime = contenthtml ? calculateReadingTime(contenthtml) : existingBlogData.readingtime;
-    let newCoverImage = "";
+    let newCoverImage: string | undefined;
     if (imageFile) {
         const folderPath = `blogImages/${existingBlogData.id}`;
         const result = await uploadToCloudinary(imageFile.buffer, folderPath);
@@ -149,6 +154,10 @@ export const updateBlogData = async (userId: number, blogData: UpdateBlogData, i
             await deleteImageFromCloudinary(publicId);
         }
     };
+    if (isCoverImgDeleted) {
+        const publicId = extractPublicIdFromUrl(existingBlogData.coverimage);
+        await deleteImageFromCloudinary(publicId);
+    }
     const finalIsPrivate = (isprivate !== undefined && isprivate !== null)
         ? isprivate === 'true'
         : existingBlogData.isprivate;
@@ -157,7 +166,7 @@ export const updateBlogData = async (userId: number, blogData: UpdateBlogData, i
         title: title || existingBlogData.title,
         slug: newSlug,
         excerpt: excerpt ?? existingBlogData.excerpt,
-        coverimage: newCoverImage || existingBlogData.coverimage,
+        coverimage: (isCoverImgDeleted || imageFile) ? newCoverImage : existingBlogData.coverimage,
         contenthtml: contenthtml ?? existingBlogData.contenthtml,
         isprivate: finalIsPrivate,
         readingtime: newReadingTime,
@@ -177,7 +186,7 @@ export const updateBlogData = async (userId: number, blogData: UpdateBlogData, i
 
 
 export const publishBlog = async (userId: number, blogData: UpdateBlogData, imageFile?: Express.Multer.File | undefined) => {
-    const { slug, title, excerpt, contenthtml, isprivate } = blogData;
+    const { slug, title, excerpt, contenthtml, isprivate, removeImage } = blogData;
     if (!slug) {
         const error = new Error("Invalid data");
         (error as any).statusCode = 400;
@@ -197,9 +206,13 @@ export const publishBlog = async (userId: number, blogData: UpdateBlogData, imag
         throw error;
     };
 
+    const isCoverImgDeleted = (removeImage !== undefined && removeImage !== null)
+        ? removeImage === 'true'
+        : false;
+
     const newSlug = title && existingBlogData.status !== "published" ? createSlug(title) : existingBlogData.slug;
     const newReadingTime = contenthtml ? calculateReadingTime(contenthtml) : existingBlogData.readingtime;
-    let newCoverImage = "";
+    let newCoverImage: string | undefined;
     if (imageFile) {
         const folderPath = `blogImages/${existingBlogData.id}`;
         const result = await uploadToCloudinary(imageFile.buffer, folderPath);
@@ -209,6 +222,10 @@ export const publishBlog = async (userId: number, blogData: UpdateBlogData, imag
             await deleteImageFromCloudinary(publicId);
         }
     };
+    if (isCoverImgDeleted) {
+        const publicId = extractPublicIdFromUrl(existingBlogData.coverimage);
+        await deleteImageFromCloudinary(publicId);
+    }
     const finalIsPrivate = (isprivate !== undefined && isprivate !== null)
         ? isprivate === 'true'
         : existingBlogData.isprivate;
@@ -216,7 +233,7 @@ export const publishBlog = async (userId: number, blogData: UpdateBlogData, imag
         title: title || existingBlogData.title,
         slug: newSlug,
         excerpt: excerpt ?? existingBlogData.excerpt,
-        coverimage: newCoverImage || existingBlogData.coverimage,
+        coverimage: (isCoverImgDeleted || imageFile) ? newCoverImage : existingBlogData.coverimage,
         contenthtml: contenthtml ?? existingBlogData.contenthtml,
         isprivate: finalIsPrivate,
         readingtime: newReadingTime,
