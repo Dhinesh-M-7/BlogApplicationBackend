@@ -8,7 +8,7 @@ rootRouter.get("/session", (req: Request, res: Response) => {
     const user = (req.session as any)?.user;
 
     if (!user) {
-        return res.status(401).json({ message: "Session expired", redirectTo: "/" });
+        return res.status(401).json({ success: false, message: "Session expired", redirectTo: "/" });
     }
 
     const { id, ...sessionData } = user;

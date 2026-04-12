@@ -2,48 +2,53 @@ import { Request, Response, NextFunction } from "express";
 import { randomUUID } from "node:crypto";
 import { pool } from "../config/db.js";
 
-interface StoredToken {
-    token: string;
-    userid: number;
-    expire: string;
-}
+const RTOKEN_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
 
 export const refreshSessionHandler = async (req: Request, res: Response, next: NextFunction) => {
-    const publicRoutes = ["/api/users/login", "/api/users/forgotpassword", "/api/users/resetpassword", "/api/users/signup"];
-    if (publicRoutes.includes(req.path) || req.path.startsWith("/api/users/verifyemail")) return next();
-    if (req.session && (req.session as any).user) return next();
+    const { path, session, cookies } = req;
 
-    const { rToken } = req.cookies;
-    if (!rToken) {
-        return res.status(401).json({ message: "Session expired", redirectTo: "/" });
+    const isPublicRoute = ["/api/users/login", "/api/users/forgotpassword", "/api/users/resetpassword", "/api/users/signup"].includes(path) || path.startsWith("/api/users/verifyemail");
+    if (isPublicRoute || (session && (session as any).user)) {
+        return next();
     }
+
+    const { rToken } = cookies;
+
+    const failSession = (message = "Session expired") => {
+        res.clearCookie("rToken");
+        return res.status(401).json({ success: false, message, redirectTo: "/" });
+    };
+
+    if (!rToken) return failSession();
 
     const client = await pool.connect();
 
     try {
         await client.query('BEGIN');
 
-        const result = await client.query(
-            `SELECT * FROM refreshtokens WHERE token = $1 FOR UPDATE`,
+        const tokenCheck = await client.query(
+            `SELECT rt.*, u.name, u.email 
+             FROM refreshtokens rt
+             JOIN users u ON rt.userid = u.id
+             WHERE rt.token = $1 FOR UPDATE`,
             [rToken]
         );
 
-        if (result.rowCount === 0) {
+        if (tokenCheck.rowCount === 0) {
             await client.query('ROLLBACK');
-            res.clearCookie("rToken");
-            return res.status(401).json({ message: "Session expired", redirectTo: "/" });
+            return failSession();
         }
 
-        const storedToken: StoredToken = result.rows[0];
+        const storedToken = tokenCheck.rows[0];
+
         if (new Date() > new Date(storedToken.expire)) {
             await client.query(`DELETE FROM refreshtokens WHERE token = $1`, [rToken]);
             await client.query('COMMIT');
-            res.clearCookie("rToken");
-            return res.status(401).json({ message: "Session expired", redirectTo: "/" });
+            return failSession();
         }
 
         const newRefreshToken = randomUUID();
-        const newExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        const newExpiry = new Date(Date.now() + RTOKEN_EXPIRY_MS);
 
         await client.query(`DELETE FROM refreshtokens WHERE token = $1`, [rToken]);
         await client.query(
@@ -51,43 +56,31 @@ export const refreshSessionHandler = async (req: Request, res: Response, next: N
             [newRefreshToken, storedToken.userid, newExpiry]
         );
 
-        const userData = await client.query(`SELECT id, name, email FROM users WHERE id = $1`, [storedToken.userid]);
-        const user = userData.rows[0];
-
-        if (!user) {
-            await client.query('ROLLBACK');
-            res.clearCookie("rToken");
-            return res.status(401).json({ message: "Session expired", redirectTo: "/" });
-        }
-
         await client.query('COMMIT');
 
-        (req.session as any).user = { id: user.id, name: user.name, email: user.email };
+        (session as any).user = { id: storedToken.userid, name: storedToken.name, email: storedToken.email };
 
         res.cookie('rToken', newRefreshToken, {
             httpOnly: true,
-            maxAge: 7 * 24 * 60 * 60 * 1000,
+            maxAge: RTOKEN_EXPIRY_MS,
             sameSite: 'none',
             secure: true
         });
 
-        req.session.save(async (err) => {
-            if (err) {
-                console.error(err);
-                return res.status(401).json({ message: "Session expired", redirectTo: "/" });
-            }
+        session.save(async (err) => {
+            if (err) return failSession("Internal session error");
+
             await pool.query(
                 'UPDATE usersession SET userid = $1 WHERE sid = $2',
-                [user.id, req.sessionID]
+                [storedToken.userid, req.sessionID]
             );
             return next();
         });
 
     } catch (error) {
-        if (client) await client.query('ROLLBACK');
+        await client.query('ROLLBACK');
         console.error("Critical Refresh Error:", error);
-        res.clearCookie("rToken");
-        return res.status(401).json({ message: "Session expired", redirectTo: "/" });
+        return failSession();
     } finally {
         client.release();
     }

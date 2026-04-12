@@ -2,18 +2,18 @@ import session from "express-session";
 import pgSession from "connect-pg-simple";
 import { pool } from "../config/db.js";
 import dotenv from "dotenv";
-import { CipherKey } from "node:crypto";
-dotenv.config();
 
-pool.on("connect", () => {
-    console.log("Connected to DB successfully");
-})
+dotenv.config();
 
 const PgStore = pgSession(session);
 
+if (!process.env.SESSION_SECRET) {
+    throw new Error("SESSION_SECRET is required for express-session.");
+}
+
 export const sessionHandler = session({
     store: new PgStore({
-        pool: pool,
+        pool,
         tableName: "usersession",
         pruneSessionInterval: 60 * 60,
         columns: {
@@ -23,7 +23,7 @@ export const sessionHandler = session({
             }
         }
     } as any),
-    secret: process.env.SESSION_SECRET as CipherKey,
+    secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
     rolling: true,

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 
-export const createSlug = (title: string) => {
+export const createSlug = (title: string): string => {
     const baseSlug = title
         .toLowerCase()
         .trim()
@@ -12,7 +12,7 @@ export const createSlug = (title: string) => {
     const id = randomUUID();
 
     return `${baseSlug}-${id}`;
-}
+};
 
 export const calculateReadingTime = (htmlString: string, wordsPerMinute: number = 225): number => {
     if (!htmlString || typeof htmlString !== "string") return 1;

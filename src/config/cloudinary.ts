@@ -1,51 +1,46 @@
 import dotenv from 'dotenv';
-dotenv.config();
-
-import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
+import { v2 as cloudinary, UploadApiResponse, UploadApiOptions } from 'cloudinary';
 import streamifier from 'streamifier';
 
+dotenv.config();
+
+const { CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET } = process.env;
+
+if (!CLOUDINARY_CLOUD_NAME || !CLOUDINARY_API_KEY || !CLOUDINARY_API_SECRET) {
+    throw new Error('Cloudinary configuration is missing in environment variables.');
+}
+
 cloudinary.config({
-    cloud_name: process.env.CLOUDINARY_CLOUD_NAME as string,
-    api_key: process.env.CLOUDINARY_API_KEY as string,
-    api_secret: process.env.CLOUDINARY_API_SECRET as string,
+    cloud_name: CLOUDINARY_CLOUD_NAME,
+    api_key: CLOUDINARY_API_KEY,
+    api_secret: CLOUDINARY_API_SECRET,
 });
 
-export const uploadProfileImgToCloudinary = async (fileBuffer: Buffer): Promise<string> => {
+const streamUpload = (fileBuffer: Buffer, options: UploadApiOptions): Promise<UploadApiResponse> => {
     return new Promise((resolve, reject) => {
-        const uploadStream = cloudinary.uploader.upload_stream(
-            { folder: "UserProfiles" },
-            (error, result) => {
-                if (error) return reject(error);
-                resolve(result?.secure_url || "");
-            }
-        );
-        uploadStream.end(fileBuffer);
-    });
-};
-
-export const uploadToCloudinary = (fileBuffer: Buffer, folder: string): Promise<UploadApiResponse> => {
-    return new Promise((resolve, reject) => {
-        const stream = cloudinary.uploader.upload_stream(
-            {
-                folder,
-                resource_type: 'auto'
-            },
-            (error, result) => {
-                if (result) resolve(result);
-                else reject(error);
-            }
-        );
+        const stream = cloudinary.uploader.upload_stream(options, (error, result) => {
+            if (result) resolve(result);
+            else reject(error);
+        });
 
         streamifier.createReadStream(fileBuffer).pipe(stream);
     });
 };
 
-export const deleteImageFromCloudinary = async (publicId: string) => {
+export const uploadToCloudinary = (fileBuffer: Buffer, folder: string): Promise<UploadApiResponse> => {
+    return streamUpload(fileBuffer, { folder, resource_type: 'auto' });
+};
+
+export const uploadProfileImgToCloudinary = async (fileBuffer: Buffer): Promise<string> => {
+    const result = await streamUpload(fileBuffer, { folder: "UserProfiles" });
+    return result.secure_url;
+};
+
+export const deleteImageFromCloudinary = async (publicId: string): Promise<void> => {
     try {
-        const result = await cloudinary.uploader.destroy(publicId);
-        console.log("Delete result:", result, publicId);
+        await cloudinary.uploader.destroy(publicId);
     } catch (error) {
-        console.error(error);
+        console.error(`Failed to delete Cloudinary asset: ${publicId}`, error);
     }
 };
 
@@ -76,10 +71,7 @@ export const extractPublicIdFromUrl = (url: string): string => {
 export const deleteFolderFromCloudinary = async (folderPath: string) => {
     try {
         await cloudinary.api.delete_resources_by_prefix(`${folderPath}/`);
-
         const result = await cloudinary.api.delete_folder(folderPath);
-
-        console.log("Folder deleted successfully:", result);
         return result;
     } catch (error) {
         console.error("Error deleting Cloudinary folder:", error);

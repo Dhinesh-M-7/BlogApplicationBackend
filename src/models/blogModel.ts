@@ -52,77 +52,57 @@ interface GetPublicBlogFilter {
 }
 
 
+const _performUpdate = async (slugId: string, updateBlogData: UpdateBlogData, isPublishing: boolean) => {
+    const { title, slug, excerpt, coverimage, contenthtml, isprivate, readingtime } = updateBlogData;
 
-export const getBlogDataBySlug = async (slug: string) => {
-    const result = await pool.query(`SELECT * FROM blogs WHERE slug = $1`, [slug]);
+    const query = `
+        UPDATE blogs 
+        SET 
+            title = $1, slug = $2, excerpt = $3, coverimage = $4, 
+            contenthtml = $5, isprivate = $6, readingtime = $7,
+            updatedtime = CURRENT_TIMESTAMP
+            ${isPublishing ? `, status = 'published', publishedtime = CURRENT_TIMESTAMP` : ''}
+        WHERE slug = $8
+        RETURNING *
+    `;
+
+    const values = [title, slug, excerpt, coverimage, contenthtml, isprivate, readingtime, slugId];
+    const result = await pool.query(query, values);
     return result.rows[0] as BlogData;
 }
 
-export const createBlog = async (createBlogData: CreateBlogData) => {
-    const { authorid, title, slug, excerpt } = createBlogData;
-    const result = await pool.query(`INSERT INTO blogs (authorid, title, slug, excerpt) VALUES ($1, $2, $3, $4) RETURNING id, slug`,
-        [authorid, title, slug, excerpt]
-    );
-    return result.rows[0] as CreateResult;
+export const getBlogDataBySlug = async (slug: string): Promise<BlogData> => {
+    const result = await pool.query(`SELECT * FROM blogs WHERE slug = $1`, [slug]);
+    return result.rows[0];
 }
 
-export const updateCoverImage = async (slug: string, coverimage: string) => {
-    await pool.query(`UPDATE blogs SET coverimage = $1 WHERE slug = $2`,
-        [coverimage, slug]
+export const createBlog = async (createBlogData: CreateBlogData): Promise<CreateResult> => {
+    const { authorid, title, slug, excerpt } = createBlogData;
+    const result = await pool.query(
+        `INSERT INTO blogs (authorid, title, slug, excerpt) VALUES ($1, $2, $3, $4) RETURNING id, slug`,
+        [authorid, title, slug, excerpt]
     );
+    return result.rows[0];
+}
+
+export const updateCoverImage = async (slug: string, coverimage: string): Promise<void> => {
+    await pool.query(`UPDATE blogs SET coverimage = $1 WHERE slug = $2`, [coverimage, slug]);
 }
 
 export const updateBlogData = async (slugId: string, updateBlogData: UpdateBlogData) => {
-    const { title, slug, excerpt, coverimage, contenthtml, isprivate, readingtime } = updateBlogData;
-    const result = await pool.query(`
-        UPDATE blogs 
-        SET 
-            title = $1, 
-            slug = $2, 
-            excerpt = $3, 
-            coverimage = $4, 
-            contenthtml = $5, 
-            isprivate = $6, 
-            readingtime = $7,
-            updatedtime = CURRENT_TIMESTAMP
-        WHERE slug = $8
-        RETURNING *
-    `, [title, slug, excerpt, coverimage, contenthtml, isprivate, readingtime, slugId]);
-
-    return result.rows[0] as BlogData;
+    return _performUpdate(slugId, updateBlogData, false);
 }
 
 export const publishBlog = async (slugId: string, updateBlogData: UpdateBlogData) => {
-    const { title, slug, excerpt, coverimage, contenthtml, isprivate, readingtime } = updateBlogData;
-    const result = await pool.query(`
-        UPDATE blogs 
-        SET 
-            title = $1, 
-            slug = $2, 
-            excerpt = $3, 
-            coverimage = $4, 
-            contenthtml = $5, 
-            status = $6,
-            isprivate = $7, 
-            readingtime = $8,
-            updatedtime = CURRENT_TIMESTAMP,
-            publishedtime = CURRENT_TIMESTAMP
-        WHERE slug = $9
-        RETURNING *
-    `, [title, slug, excerpt, coverimage, contenthtml, "published", isprivate, readingtime, slugId]);
-
-    return result.rows[0] as BlogData;
+    return _performUpdate(slugId, updateBlogData, true);
 }
 
 export const deleteBlog = async (slugId: string) => {
-    const result = await pool.query(`
-        DELETE FROM blogs WHERE slug = $1
-        `, [slugId]
-    )
+    const result = await pool.query(`DELETE FROM blogs WHERE slug = $1`, [slugId]);
     return result.rowCount;
 }
 
-export const getMyBlogs = async (userId: number, filterData: GetMyBlogFilter) => {
+export const getMyBlogs = async (userId: number, filterData: GetMyBlogFilter): Promise<BlogData[]> => {
     const { search, status, isprivate, sort } = filterData;
 
     let query = `SELECT * FROM blogs WHERE authorid = $1`;
@@ -155,7 +135,7 @@ export const getMyBlogs = async (userId: number, filterData: GetMyBlogFilter) =>
 
 }
 
-export const getPublicBlogs = async (userId: number, filterData: GetPublicBlogFilter) => {
+export const getPublicBlogs = async (userId: number, filterData: GetPublicBlogFilter): Promise<any[]> => {
     const { search, sort } = filterData;
 
     let query = `

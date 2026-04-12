@@ -19,7 +19,7 @@ interface UpdateBlogData {
 export const processImageUpload = async (userId: number, slugId: string, file?: Express.Multer.File) => {
 
     if (!userId || !slugId || !file) {
-        const error = new Error("Invalid data");
+        const error = new Error("Missing required data.");
         (error as any).statusCode = 400;
         throw error;
     }
@@ -28,29 +28,35 @@ export const processImageUpload = async (userId: number, slugId: string, file?: 
         const error = new Error("Blog not found.");
         (error as any).statusCode = 404;
         throw error;
-    };
+    }
 
     if (existingBlogData.authorid !== userId) {
         const error = new Error("You do not have permission.");
         (error as any).statusCode = 403;
         throw error;
-    };
+    }
 
     const folderPath = `blogImages/${existingBlogData.id}`;
 
-    const result = await uploadToCloudinary(file.buffer, folderPath);
+    try {
+        const result = await uploadToCloudinary(file.buffer, folderPath);
 
-    return {
-        url: result.secure_url,
-        publicId: result.public_id
-    };
+        return {
+            url: result.secure_url,
+            publicId: result.public_id
+        };
+    } catch (uploadError) {
+        const error = new Error("Failed to upload image to storage.");
+        (error as any).statusCode = 500;
+        throw error;
+    }
 };
 
 export const createBlog = async (id: number, blogData: CreateBlogData, imageFile?: Express.Multer.File) => {
     const { title, excerpt } = blogData;
 
     if (!title || !excerpt) {
-        const error = new Error("Invalid data");
+        const error = new Error("Missing required fields.");
         (error as any).statusCode = 400;
         throw error;
     }
@@ -90,7 +96,7 @@ export const createBlog = async (id: number, blogData: CreateBlogData, imageFile
 
 export const getBlogData = async (userId: number, blogId: string) => {
     if (!userId || !blogId) {
-        const error = new Error("Invalid data");
+        const error = new Error("Missing required data.");
         (error as any).statusCode = 400;
         throw error;
     }
@@ -111,84 +117,94 @@ export const getBlogData = async (userId: number, blogId: string) => {
     }
 
     return {
-        message: "Blog data retrieved successfully",
+        message: "Blog data retrieved successfully.",
         blogData
     };
 
 }
 
-export const updateBlogData = async (userId: number, blogData: UpdateBlogData, imageFile?: Express.Multer.File | undefined) => {
+export const updateBlogData = async (userId: number, blogData: UpdateBlogData, imageFile?: Express.Multer.File) => {
     const { slug, title, excerpt, contenthtml, isprivate, removeImage } = blogData;
     if (!slug) {
-        const error = new Error("Invalid data");
+        const error = new Error("Missing required data.");
         (error as any).statusCode = 400;
         throw error;
-    };
+    }
 
     const existingBlogData = await blogModel.getBlogDataBySlug(slug);
     if (!existingBlogData) {
         const error = new Error("Blog not found.");
         (error as any).statusCode = 404;
         throw error;
-    };
+    }
 
     if (existingBlogData.authorid !== userId) {
         const error = new Error("You do not have permission.");
         (error as any).statusCode = 403;
         throw error;
-    };
+    }
 
-    const isCoverImgDeleted = (removeImage !== undefined && removeImage !== null)
-        ? removeImage === 'true'
-        : false;
+    const newSlug = (title && existingBlogData.status !== "published")
+        ? createSlug(title)
+        : existingBlogData.slug;
 
-    const newSlug = title && existingBlogData.status !== "published" ? createSlug(title) : existingBlogData.slug;
-    const newReadingTime = contenthtml ? calculateReadingTime(contenthtml) : existingBlogData.readingtime;
-    let newCoverImage: string | undefined;
-    if (imageFile) {
-        const folderPath = `blogImages/${existingBlogData.id}`;
-        const result = await uploadToCloudinary(imageFile.buffer, folderPath);
-        newCoverImage = result.secure_url;
-        if (existingBlogData.coverimage && newCoverImage) {
+    const newReadingTime = contenthtml
+        ? calculateReadingTime(contenthtml)
+        : existingBlogData.readingtime;
+
+    const isDeletingImage = removeImage === 'true';
+    const isReplacingImage = !!imageFile;
+    let finalCoverImage = existingBlogData.coverimage;
+
+    if (existingBlogData.coverimage && (isDeletingImage || isReplacingImage)) {
+        try {
             const publicId = extractPublicIdFromUrl(existingBlogData.coverimage);
             await deleteImageFromCloudinary(publicId);
+            finalCoverImage = "";
+        } catch (err) {
+            console.error("Cloudinary cleanup failed:", err);
         }
-    };
-    if (isCoverImgDeleted) {
-        const publicId = extractPublicIdFromUrl(existingBlogData.coverimage);
-        await deleteImageFromCloudinary(publicId);
     }
+
     const finalIsPrivate = (isprivate !== undefined && isprivate !== null)
         ? isprivate === 'true'
         : existingBlogData.isprivate;
 
-    const updateData = {
+    if (isReplacingImage && imageFile) {
+        const folderPath = `blogImages/${existingBlogData.id}`;
+        const uploadResult = await uploadToCloudinary(imageFile.buffer, folderPath);
+        finalCoverImage = uploadResult.secure_url;
+    }
+
+    const updatePayload = {
         title: title || existingBlogData.title,
         slug: newSlug,
         excerpt: excerpt ?? existingBlogData.excerpt,
-        coverimage: (isCoverImgDeleted || imageFile) ? newCoverImage : existingBlogData.coverimage,
+        coverimage: finalCoverImage,
         contenthtml: contenthtml ?? existingBlogData.contenthtml,
         isprivate: finalIsPrivate,
         readingtime: newReadingTime,
     };
 
-    const data = await blogModel.updateBlogData(slug, updateData);
-    if (!data) {
-        const error = new Error("Updating blog content failed.");
+    const updatedBlog = await blogModel.updateBlogData(slug, updatePayload);
+
+    if (!updatedBlog) {
+        const error = new Error("Database update failed.");
         (error as any).statusCode = 500;
         throw error;
     }
+
     return {
-        message: "Blog data updated successfully",
-        data
-    }
+        message: "Blog updated successfully.",
+        data: updatedBlog
+    };
 };
 
 
-export const publishBlog = async (userId: number, blogData: UpdateBlogData, imageFile?: Express.Multer.File | undefined) => {
+export const publishBlog = async (userId: number, blogData: UpdateBlogData, imageFile?: Express.Multer.File) => {
     const { slug, title, excerpt, contenthtml, isprivate, removeImage } = blogData;
     if (!slug) {
-        const error = new Error("Invalid data");
+        const error = new Error("Blog slug is required for publishing.");
         (error as any).statusCode = 400;
         throw error;
     };
@@ -198,48 +214,56 @@ export const publishBlog = async (userId: number, blogData: UpdateBlogData, imag
         const error = new Error("Blog not found.");
         (error as any).statusCode = 404;
         throw error;
-    };
+    }
 
     if (existingBlogData.authorid !== userId) {
         const error = new Error("You do not have permission.");
         (error as any).statusCode = 403;
         throw error;
-    };
+    }
 
-    const isCoverImgDeleted = (removeImage !== undefined && removeImage !== null)
-        ? removeImage === 'true'
-        : false;
+    const isImageRemoved = removeImage === 'true';
+    const isImageReplaced = !!imageFile;
+    let finalCoverImage = existingBlogData.coverimage;
 
-    const newSlug = title && existingBlogData.status !== "published" ? createSlug(title) : existingBlogData.slug;
-    const newReadingTime = contenthtml ? calculateReadingTime(contenthtml) : existingBlogData.readingtime;
-    let newCoverImage: string | undefined;
-    if (imageFile) {
-        const folderPath = `blogImages/${existingBlogData.id}`;
-        const result = await uploadToCloudinary(imageFile.buffer, folderPath);
-        newCoverImage = result.secure_url;
-        if (existingBlogData.coverimage && newCoverImage) {
+    const newSlug = (title && existingBlogData.status !== "published")
+        ? createSlug(title)
+        : existingBlogData.slug;
+
+    const newReadingTime = contenthtml
+        ? calculateReadingTime(contenthtml)
+        : existingBlogData.readingtime;
+
+    if (existingBlogData.coverimage && (isImageRemoved || isImageReplaced)) {
+        try {
             const publicId = extractPublicIdFromUrl(existingBlogData.coverimage);
             await deleteImageFromCloudinary(publicId);
+            finalCoverImage = "";
+        } catch (err) {
+            console.error("Cloudinary cleanup failed during publish:", err);
         }
-    };
-    if (isCoverImgDeleted) {
-        const publicId = extractPublicIdFromUrl(existingBlogData.coverimage);
-        await deleteImageFromCloudinary(publicId);
     }
     const finalIsPrivate = (isprivate !== undefined && isprivate !== null)
         ? isprivate === 'true'
         : existingBlogData.isprivate;
-    const updateData = {
+
+    if (isImageReplaced && imageFile) {
+        const folderPath = `blogImages/${existingBlogData.id}`;
+        const uploadResult = await uploadToCloudinary(imageFile.buffer, folderPath);
+        finalCoverImage = uploadResult.secure_url;
+    }
+
+    const updatePayload = {
         title: title || existingBlogData.title,
         slug: newSlug,
         excerpt: excerpt ?? existingBlogData.excerpt,
-        coverimage: (isCoverImgDeleted || imageFile) ? newCoverImage : existingBlogData.coverimage,
+        coverimage: finalCoverImage,
         contenthtml: contenthtml ?? existingBlogData.contenthtml,
         isprivate: finalIsPrivate,
         readingtime: newReadingTime,
     };
 
-    const data = await blogModel.publishBlog(slug, updateData);
+    const data = await blogModel.publishBlog(slug, updatePayload);
     if (!data) {
         const error = new Error("Publishing the blog failed.");
         (error as any).statusCode = 500;
@@ -253,7 +277,7 @@ export const publishBlog = async (userId: number, blogData: UpdateBlogData, imag
 
 export const deleteBlog = async (userId: number, slugId: string) => {
     if (!slugId) {
-        const error = new Error("Invalid data");
+        const error = new Error("Missing required data.");
         (error as any).statusCode = 400;
         throw error;
     };
@@ -282,13 +306,13 @@ export const deleteBlog = async (userId: number, slugId: string) => {
     await deleteFolderFromCloudinary(imageFolderPath);
 
     return {
-        message: "Blog has been deleted"
+        message: "Blog has been deleted."
     }
 }
 
 export const getMyBlogs = async (userId: number, queryData: any) => {
     if (!userId) {
-        const error = new Error("Invalid data");
+        const error = new Error("Missing required data.");
         (error as any).statusCode = 400;
         throw error;
     }
@@ -304,14 +328,14 @@ export const getMyBlogs = async (userId: number, queryData: any) => {
     const data = await blogModel.getMyBlogs(userId, filterData);
 
     return {
-        message: "Data retrieved successfully",
+        message: "Data retrieved successfully.",
         data
     }
 }
 
 export const getPublicBlogs = async (userId: number, queryData: any) => {
     if (!userId) {
-        const error = new Error("Invalid data");
+        const error = new Error("Missing required data.");
         (error as any).statusCode = 400;
         throw error;
     }
@@ -324,7 +348,7 @@ export const getPublicBlogs = async (userId: number, queryData: any) => {
     const data = await blogModel.getPublicBlogs(userId, filterData);
 
     return {
-        message: "Data retrieved successfully",
+        message: "Data retrieved successfully.",
         data
     }
 }

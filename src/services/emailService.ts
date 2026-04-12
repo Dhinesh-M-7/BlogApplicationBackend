@@ -8,28 +8,37 @@ const client = new BrevoClient({
     apiKey: process.env.BREVO_API_KEY as string,
 });
 
+const SENDER_EMAIL = process.env.MAIL_USER as string;
+
+const sendEmail = async (to: string, subject: string, htmlContent: string, senderName: string) => {
+    try {
+        const response = await client.transactionalEmails.sendTransacEmail({
+            subject,
+            sender: { name: senderName, email: SENDER_EMAIL },
+            to: [{ email: to }],
+            htmlContent
+        });
+        console.log(`Email sent successfully to ${to}: ${response.messageId}`);
+        return response;
+    } catch (error) {
+        console.error(`Brevo Email Error [${subject}]:`, error);
+        throw error;
+    }
+};
+
 export const sendVerificationMail = async (to: string, origin: string): Promise<any> => {
-    console.log("DEBUG: Sending email via BrevoClient to ", to);
     const token = generateToken(to);
     const verificationUrl = `${origin}/verify-email?token=${token}`;
 
-    try {
-        const response = await client.transactionalEmails.sendTransacEmail({
-            subject: "Confirm your email address",
-            sender: {
-                name: "Blog App",
-                email: process.env.MAIL_USER as string
-            },
-            to: [{ email: to }],
-            htmlContent: `
-                <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
-                    <div style="background-color: #4CAF50; padding: 20px; text-align: center;">
-                        <h1 style="color: white; margin: 0; font-size: 24px;">Welcome to Blog App!</h1>
-                    </div>
-                    <div style="padding: 30px; background-color: #ffffff;">
+    const html = `
+        <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden;">
+            <div style="background-color: #4CAF50; padding: 20px; text-align: center;">
+                <h1 style="color: white; margin: 0; font-size: 24px;">Welcome to Blog App!</h1>
+            </div>
+            <div style="padding: 30px; background-color: #ffffff;">
                         <p style="font-size: 16px;">Hi there,</p>
                         <p style="font-size: 16px;">We're excited to have you join our community. Before you dive into reading and writing amazing stories, please confirm your email address to activate your account.</p>
-                        <div style="text-align: center; margin: 35px 0;">
+                <div style="text-align: center; margin: 35px 0;">
                             <a href="${verificationUrl}"
                                 style="
                                 background-color: #4CAF50;
@@ -42,44 +51,28 @@ export const sendVerificationMail = async (to: string, origin: string): Promise<
                                 display: inline-block;
                                 box-shadow: 0 4px 6px rgba(0,0,0,0.1);
                                 ">
-                                Verify Email Address
-                            </a>
-                        </div>
+                        Verify Email Address
+                    </a>
+                </div>
                         <p style="font-size: 14px; color: #666;">If you did not create an account with us, you can safely ignore this email.</p>
                         <p style="font-size: 16px;">Thanks,<br/>Dhinesh</p>
-                    </div>
-                </div>
-            `
-        });
+            </div>
+        </div>`;
 
-        console.log("Verification email sent successfully: ", response.messageId);
-        return response;
-    } catch (error) {
-        console.error("Brevo Verification Mail Error:", error);
-        throw error;
-    }
+    return sendEmail(to, "Confirm your email address", html, "Blog App");
 };
 
 export const sendForgotPasswordMail = async (to: string, origin: string): Promise<any> => {
-    console.log("DEBUG: Sending email via BrevoClient to ", to);
     const token = generateToken(to);
     const resetUrl = `${origin}/reset-password?token=${token}`;
 
-    try {
-        const response = await client.transactionalEmails.sendTransacEmail({
-            subject: "Reset your password",
-            sender: {
-                name: "Blog App Support",
-                email: process.env.MAIL_USER as string
-            },
-            to: [{ email: to }],
-            htmlContent: `
-                <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
-                    <h2 style="color: #d9534f;">Password Reset Request</h2>
-                    <p>Hi there,</p>
-                    <p>We received a request to reset the password for your account associated with this email address.</p>
+    const html = `
+        <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; padding: 20px; border-radius: 10px;">
+            <h2 style="color: #d9534f;">Password Reset Request</h2>
+            <p>Hi there,</p>
+            <p>We received a request to reset the password for your account associated with this email address.</p>
                     <p>To proceed with the password reset, click the button below:</p>
-                    <div style="text-align: center;">
+            <div style="text-align: center;">
                         <a href="${resetUrl}"
                             style="
                             display: inline-block;
@@ -92,21 +85,14 @@ export const sendForgotPasswordMail = async (to: string, origin: string): Promis
                             font-weight: bold;
                             font-size: 16px;
                             ">
-                            Reset My Password
-                        </a>
-                    </div>
+                    Reset My Password
+                </a>
+            </div>
                     <p style="font-size: 0.9em; color: #666;">
                         <strong>Note:</strong>If you didn't request this, you can safely ignore this email. Your password will remain unchanged.
                     </p>
-                    <p>Best regards,<br/>Dhinesh</p>
-                </div>
-            `
-        });
+            <p>Best regards,<br/>Dhinesh</p>
+        </div>`;
 
-        console.log("Forgot Password Email sent successfully: ", response.messageId);
-        return response;
-    } catch (error) {
-        console.error("Brevo Forgot Password Mail Error:", error);
-        throw error;
-    }
+    return sendEmail(to, "Reset your password", html, "Blog App Support");
 };

@@ -38,20 +38,20 @@ interface UpdateUserData {
 
 export const signUp = async (data: SignupData, origin: string) => {
     if (!data) {
-        const error = new Error("Request body is required");
+        const error = new Error("Request body is required.");
         (error as any).statusCode = 400;
         throw error;
     }
 
     if (!data.email || !data.name || !data.password) {
-        const error = new Error("Expected fields are missing");
+        const error = new Error("Expected fields are missing.");
         (error as any).statusCode = 400;
         throw error;
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(data.email)) {
-        const error = new Error("Invalid email format");
+        const error = new Error("Invalid email format.");
         (error as any).statusCode = 400;
         throw error;
     }
@@ -60,7 +60,7 @@ export const signUp = async (data: SignupData, origin: string) => {
 
     const user = await userModel.getUserUsingEmail(data.email);
     if (user && user.isvalidated) {
-        const error = new Error("User already exists");
+        const error = new Error("User already exists.");
         (error as any).statusCode = 400;
         throw error;
     }
@@ -68,7 +68,7 @@ export const signUp = async (data: SignupData, origin: string) => {
     if (user && !user.isvalidated) {
         await sendVerificationMail(data.email, origin);
         return {
-            message: "User created successfully",
+            message: "User created successfully.",
             user
         };
     }
@@ -76,14 +76,14 @@ export const signUp = async (data: SignupData, origin: string) => {
     if (!user) {
         const userData = await userModel.createUser(data);
         if (!userData) {
-            const error = new Error("User creation failed");
+            const error = new Error("User creation failed.");
             (error as any).statusCode = 500;
             throw error;
         }
         await sendVerificationMail(data.email, origin);
 
         return {
-            message: "User created successfully",
+            message: "User created successfully.",
             userData
         };
     }
@@ -100,7 +100,7 @@ export const verifyEmail = async (token: string) => {
     const email = tokenData.email;
     const user = await userModel.getUserUsingEmail(email);
     if (user && user.isvalidated) {
-        const error = new Error("Account already verified");
+        const error = new Error("Account already verified.");
         (error as any).statusCode = 400;
         throw error;
     }
@@ -108,7 +108,7 @@ export const verifyEmail = async (token: string) => {
     if (user && !user.isvalidated) {
         const userData = await userModel.verifyUser(email);
         return {
-            message: "User email verified successfully",
+            message: "User email verified successfully.",
             userData
         };
     }
@@ -117,13 +117,13 @@ export const verifyEmail = async (token: string) => {
 
 export const loginUser = async (data: LoginData) => {
     if (!data) {
-        const error = new Error("Request body is required");
+        const error = new Error("Request body is required.");
         (error as any).statusCode = 400;
         throw error;
     }
 
     if (!data.email || !data.password) {
-        const error = new Error("Email and password are required");
+        const error = new Error("Email and password are required.");
         (error as any).statusCode = 400;
         throw error;
     }
@@ -135,13 +135,13 @@ export const loginUser = async (data: LoginData) => {
         : false;
 
     if (!userData || !isPasswordValid) {
-        const error = new Error("Invalid email or password");
+        const error = new Error("Invalid email or password.");
         (error as any).statusCode = 401;
         throw error;
     }
 
     if (!userData.isvalidated) {
-        const error = new Error("Please verify the email before logging in");
+        const error = new Error("Please verify the email before logging in.");
         (error as any).statusCode = 403;
         throw error;
     }
@@ -150,7 +150,7 @@ export const loginUser = async (data: LoginData) => {
     const refreshToken = await userModel.createRefreshToken(userData.id);
 
     return {
-        message: "Login Successful",
+        message: "Login Successful.",
         sessionData,
         refreshToken
     }
@@ -158,13 +158,13 @@ export const loginUser = async (data: LoginData) => {
 
 export const changeUserPassword = async (data: ChangePasswordData, userId: number) => {
     if (!data) {
-        const error = new Error("Request body is required");
+        const error = new Error("Request body is required.");
         (error as any).statusCode = 400;
         throw error;
     }
 
     if (!data.newPassword || !data.oldPassword) {
-        const error = new Error("Invalid data");
+        const error = new Error("Missing required data.");
         (error as any).statusCode = 400;
         throw error;
     }
@@ -177,7 +177,7 @@ export const changeUserPassword = async (data: ChangePasswordData, userId: numbe
 
     const userData = await userModel.getUserUsingId(userId);
     if (!userData) {
-        const error = new Error("Invalid data");
+        const error = new Error("Missing required data.");
         (error as any).statusCode = 400;
         throw error;
     }
@@ -185,7 +185,7 @@ export const changeUserPassword = async (data: ChangePasswordData, userId: numbe
     const isOldPasswordCorrect = await bcrypt.compare(data.oldPassword, userData.password);
 
     if (!isOldPasswordCorrect) {
-        const error = new Error("Old password is incorrect");
+        const error = new Error("Old password is incorrect.");
         (error as any).statusCode = 401;
         throw error;
     } else {
@@ -194,20 +194,20 @@ export const changeUserPassword = async (data: ChangePasswordData, userId: numbe
         await userModel.updatePassword(password, userId);
 
         return {
-            message: "User password updated successfully"
+            message: "User password updated successfully."
         }
     }
 }
 
 export const forgotPassword = async (data: Email, origin: string) => {
     if (!data) {
-        const error = new Error("Request body is required");
+        const error = new Error("Request body is required.");
         (error as any).statusCode = 400;
         throw error;
     }
 
     if (!data.email) {
-        const error = new Error("Email is required");
+        const error = new Error("Email is required.");
         (error as any).statusCode = 400;
         throw error;
     }
@@ -228,13 +228,13 @@ export const forgotPassword = async (data: Email, origin: string) => {
 
 export const resetPassword = async (data: ResetPasswordData) => {
     if (!data) {
-        const error = new Error("Request body is required");
+        const error = new Error("Request body is required.");
         (error as any).statusCode = 400;
         throw error;
     }
 
     if (!data.token || !data.password) {
-        const error = new Error("Invalid data");
+        const error = new Error("Missing required data.");
         (error as any).statusCode = 400;
         throw error;
     }
@@ -256,7 +256,7 @@ export const resetPassword = async (data: ResetPasswordData) => {
 
     const isNewPasswordSame = await bcrypt.compare(data.password, user.password);
     if (isNewPasswordSame) {
-        const error = new Error("New password is same as the old password");
+        const error = new Error("New password is same as the old password.");
         (error as any).statusCode = 400;
         throw error;
     }
@@ -267,7 +267,7 @@ export const resetPassword = async (data: ResetPasswordData) => {
     await userModel.deleteAllSessions(user.id);
 
     return {
-        message: "User password updated successfully"
+        message: "User password updated successfully."
     }
 }
 
@@ -278,51 +278,57 @@ export const getUser = async (userId: number) => {
         throw error;
     }
 
-    const { id, password, isvalidated, ...userData } = await userModel.getUserUsingId(userId);
-    if (!userData) {
-        const error = new Error("User not found");
+    const data = await userModel.getUserUsingId(userId);
+    if (!data) {
+        const error = new Error("User not found.");
         (error as any).statusCode = 404;
         throw error;
     }
 
+    const { id, password, isvalidated, ...userData } = data;
+
     return {
-        message: "User details retrieved successfully",
+        message: "User details retrieved successfully.",
         userData,
     };
 };
 
-export const updateUser = async (userId: number, updatedUserData: UpdateUserData, imageFile?: Express.Multer.File | undefined) => {
+export const updateUser = async (userId: number, updatedUserData: UpdateUserData, imageFile?: Express.Multer.File) => {
     const userData = await userModel.getUserUsingId(userId);
     if (!userData) {
-        const error = new Error("User not found");
+        const error = new Error("User not found.");
         (error as any).statusCode = 404;
         throw error;
     }
 
-    const isProfileImgDeleted = (updatedUserData.isImageRemoved !== undefined && updatedUserData.isImageRemoved !== null)
-        ? updatedUserData.isImageRemoved === 'true'
-        : false;
+    const isImageRemoved = updatedUserData.isImageRemoved === 'true';
+    const isImageReplaced = !!imageFile;
+    let newProfileUrl = userData.profileurl;
 
-    if (userData.profileurl && (isProfileImgDeleted || imageFile)) {
-        const publicId = extractPublicIdFromUrl(userData.profileurl);
-        await deleteImageFromCloudinary(publicId);
+    if (userData.profileurl && (isImageRemoved || isImageReplaced)) {
+        try {
+            const publicId = extractPublicIdFromUrl(userData.profileurl);
+            await deleteImageFromCloudinary(publicId);
+            newProfileUrl = "";
+        } catch (err) {
+            console.error("Cloudinary deletion failed, continuing update:", err);
+        }
     }
 
-    let profileUrl: string | undefined;
-    if (imageFile) {
-        profileUrl = await uploadProfileImgToCloudinary(imageFile.buffer);
+    if (isImageReplaced && imageFile) {
+        newProfileUrl = await uploadProfileImgToCloudinary(imageFile.buffer);
     }
 
     const updatedData = {
         name: updatedUserData?.name || userData.name,
         bio: updatedUserData?.bio || userData.bio,
-        profileurl: (isProfileImgDeleted || imageFile) ? profileUrl : userData.profileurl
-    }
+        profileurl: newProfileUrl
+    };
 
     const updatedDbData = await userModel.updateUser(userId, updatedData);
 
     return {
-        message: "User details updated successfully",
+        message: "User details updated successfully.",
         userData: updatedDbData,
     };
-}
+};
